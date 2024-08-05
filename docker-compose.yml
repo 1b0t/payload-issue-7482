@@ -1,0 +1,39 @@
+services:
+  payload:
+    image: node:18-alpine
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/home/node/app
+      - node_modules:/home/node/app/node_modules
+    working_dir: /home/node/app/
+    command: sh -c "yarn install && yarn dev"
+    depends_on:
+      - mongo
+    environment:
+      DATABASE_URI: mongodb://mongo/access-endpoint-bug?replicaSet=rs0
+      PAYLOAD_SECRET: bd0b14ad764c3a853e15f313
+
+  mongo:
+    image: mongo:6.0
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - 27017:27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+    volumes:
+      - "mongo_data:/data/db"
+      - "mongo_config:/data/configdb"
+
+volumes:
+  data:
+  node_modules:
+  mongo_data:
+  mongo_config:
